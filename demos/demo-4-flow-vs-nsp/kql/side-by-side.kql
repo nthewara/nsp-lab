@@ -1,0 +1,20 @@
+// Demo 4 main query — see ../README.md for narrative.
+// Symlink target: ../../kql/vnet-flow-vs-nsp.kql (kept here for self-contained demos)
+
+let window = 1h;
+let nsp =
+    AzureDiagnostics
+    | where TimeGenerated > ago(window)
+    | where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+    | extend resource = tostring(split(ResourceId, "/")[-1])
+    | project nspTime = TimeGenerated, nspResult = result_s, nspMode = accessMode_s,
+              nspRule = matchedRule_s, nspSrcIP = sourceIPAddress_s, resource, operationName_s;
+let flow =
+    AzureNetworkAnalytics_CL
+    | where TimeGenerated > ago(window)
+    | where SubType_s == "FlowLog"
+    | project flowTime = TimeGenerated, SrcIP_s, DestIP_s, DestPort_d, L4Protocol_s,
+              FlowDirection_s, AllowedInFlows_d, DeniedInFlows_d, InboundBytes_d;
+flow
+| join kind=fullouter (nsp) on $left.SrcIP_s == $right.nspSrcIP
+| order by coalesce(nspTime, flowTime) desc

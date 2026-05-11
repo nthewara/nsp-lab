@@ -4,30 +4,33 @@
 
 ```mermaid
 flowchart TB
-  subgraph SUB["Subscription <your-sub-id>"]
+  subgraph SUB["Subscription &lt;your-sub-id&gt;"]
     subgraph RG["RG rg-nsp-lab"]
-      LAW[(Log Analytics<br/>law-nsp-lab)]
-      UAMI[[uami-nsp-lab]]
-      subgraph VNET["VNet vnet-nsp-lab / 10.50.0.0/16"]
-        JUMP[Jump VM<br/>vm-nsp-jump<br/>Ubuntu B2s]
+      LAW[("Log Analytics law-nsp-lab")]
+      UAMI[["uami-nsp-lab"]]
+      FLOWST[("Storage stflownsplab raw flow logs")]
+      subgraph VNET["VNet vnet-nsp-lab 10.50.0.0/16"]
+        JUMP["Jump VM vm-nsp-jump Ubuntu B2s"]
       end
       subgraph NSP["nsp-lab-perimeter (NSP)"]
-        PROFILE["profile-default<br/>Inbound: subscriptions=[this sub]<br/>Outbound: subscriptions=[this sub]"]
-        KV[Key Vault<br/>kv-nsp-…]
-        ST[Storage<br/>stnsp…]
-        SQL[Azure SQL<br/>sql-nsp-…]
-        AOAI[AI Services<br/>aoai-nsp-…<br/>gpt-4o-mini]
-        FP[Foundry Project<br/>proj-nsp-…]
-        SRCH[AI Search<br/>srch-nsp-…]
-        COS[Cosmos DB<br/>cos-nsp-…]
+        PROFILE["profile-default Inbound subscriptions=[this sub]"]
+        KV["Key Vault kv-nsp-x"]
+        ST["Storage stnspx"]
+        SQL["Azure SQL sql-nsp-x"]
+        AOAI["AI Services aoai-nsp-x gpt-4o-mini"]
+        FP["Foundry Project proj-nsp-x"]
+        SRCH["AI Search srch-nsp-x"]
+        COS["Cosmos DB cos-nsp-x"]
       end
     end
   end
-  CLIENT((Laptop / internet))
-  CLIENT -->|publicNetworkAccess=Enabled<br/>NSP decides per accessMode| NSP
-  JUMP -->|same sub → matches profile| NSP
-  NSP -->|NetworkSecurityPerimeterAccessRule<br/>NetworkSecurityPerimeterPublicAccessAttempt| LAW
-  KV & ST & SQL & AOAI & SRCH & COS -->|resource-native diags| LAW
+  CLIENT(("Laptop / internet"))
+  CLIENT -->|"publicNetworkAccess=Enabled NSP decides per accessMode"| NSP
+  JUMP -->|"same sub - matches profile"| NSP
+  VNET -->|"VNet flow logs + Traffic Analytics"| FLOWST
+  FLOWST -->|"flow + Traffic Analytics"| LAW
+  NSP -->|"NSP diagnostic categories"| LAW
+  KV & ST & SQL & AOAI & SRCH & COS -->|"resource-native diags"| LAW
   FP --- AOAI
 ```
 
@@ -82,9 +85,9 @@ sequenceDiagram
   NSP->>NSP: source IP in subscription? yes
   NSP->>SQL: allowed
   SQL-->>Jump: INSERT 1 row
-  NSP-->>LAW: NetworkSecurityPerimeterAccessRule (matched, allow-sub-inbound)
+  NSP-->>LAW: NetworkSecurityPerimeterAccessRule (matched allow-sub-inbound)
   Lap->>NSP: TDS connect from internet
-  NSP->>NSP: Learning ⇒ allow + log<br/>Enforced ⇒ deny + log
+  NSP->>NSP: Learning - allow + log / Enforced - deny + log
   NSP-->>LAW: NetworkSecurityPerimeterPublicAccessAttempt
 ```
 

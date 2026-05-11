@@ -8,7 +8,7 @@ TFVARS="${TFVARS:-$HOME/workspace/tfvars/nsp-lab.tfvars}"
 BACKEND="${BACKEND:-$HOME/workspace/tfvars/nsp-lab-backend.hcl}"
 AUTO="${1:-}"
 
-STAGES=( 50-diagnostics 40-associations 30-foundry 20-resources 10-perimeter )
+STAGES=( 55-flow-logs 50-diagnostics 40-associations 30-foundry 20-resources 10-perimeter )
 for s in "${STAGES[@]}"; do
   echo "→ destroying $s"
   cd "$ROOT/infra/terraform/$s"

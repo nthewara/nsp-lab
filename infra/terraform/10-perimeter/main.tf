@@ -246,6 +246,7 @@ output "rg_name" { value = azurerm_resource_group.rg.name }
 output "location" { value = azurerm_resource_group.rg.location }
 output "law_id" { value = azurerm_log_analytics_workspace.law.id }
 output "law_name" { value = azurerm_log_analytics_workspace.law.name }
+output "law_workspace_id" { value = azurerm_log_analytics_workspace.law.workspace_id }
 output "uami_id" { value = azurerm_user_assigned_identity.uami.id }
 output "uami_principal_id" { value = azurerm_user_assigned_identity.uami.principal_id }
 output "uami_client_id" { value = azurerm_user_assigned_identity.uami.client_id }

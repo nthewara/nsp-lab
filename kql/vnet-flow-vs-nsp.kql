@@ -1,0 +1,31 @@
+// vnet-flow-vs-nsp.kql
+// Correlate NSP control-plane events with VNet data-plane flows for the SAME source IPs / time window.
+// Last 1h, joined fullouter so you see "NSP saw it but no flow" or "flow saw it but no NSP" cases too.
+//
+// Schemas:
+//   AzureDiagnostics → NSP categories (NetworkSecurityPerimeterAccessRule, …PublicAccessAttempt)
+//   AzureNetworkAnalytics_CL → legacy Traffic Analytics (SubType_s=='FlowLog')
+//   (NTANetAnalytics is the newer schema — replace columns if your workspace uses it.)
+
+let window = 1h;
+let nsp =
+    AzureDiagnostics
+    | where TimeGenerated > ago(window)
+    | where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+    | extend resource = tostring(split(ResourceId, "/")[-1])
+    | project nspTime = TimeGenerated, nspResult = result_s, nspMode = accessMode_s,
+              nspRule = matchedRule_s, nspSrcIP = sourceIPAddress_s, resource, operationName_s;
+let flow =
+    AzureNetworkAnalytics_CL
+    | where TimeGenerated > ago(window)
+    | where SubType_s == "FlowLog"
+    | project flowTime = TimeGenerated, SrcIP_s, DestIP_s, DestPort_d, L4Protocol_s,
+              FlowDirection_s, FlowType_s,
+              AllowedInFlows_d, DeniedInFlows_d, InboundBytes_d, OutboundBytes_d;
+flow
+| join kind=fullouter (nsp) on $left.SrcIP_s == $right.nspSrcIP
+| project ts = coalesce(nspTime, flowTime),
+          nspResult, nspMode, nspRule, resource, operationName_s,
+          SrcIP_s, DestIP_s, DestPort_d, L4Protocol_s, FlowDirection_s, FlowType_s,
+          AllowedInFlows_d, DeniedInFlows_d, InboundBytes_d, OutboundBytes_d
+| order by ts desc

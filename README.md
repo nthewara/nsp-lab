@@ -5,16 +5,16 @@
 ```mermaid
 flowchart LR
   subgraph PERIMETER["nsp-lab-perimeter (NSP) — default profile"]
-    KV[Key Vault]
-    ST[Storage]
-    SQL[Azure SQL]
-    AOAI[AI Services + Foundry project]
-    SRCH[AI Search]
-    COS[Cosmos DB]
+    KV["Key Vault"]
+    ST["Storage"]
+    SQL["Azure SQL"]
+    AOAI["AI Services + Foundry project"]
+    SRCH["AI Search"]
+    COS["Cosmos DB"]
   end
-  JUMP[Jump VM<br/>(UAMI)] -->|inside subscription:<br/>allowed by default profile| PERIMETER
-  NET((Public internet)) -.->|Learning: allowed + logged<br/>Enforced: 403 + logged| PERIMETER
-  PERIMETER -- "NetworkSecurityPerimeterAccessRule<br/>NetworkSecurityPerimeterPublicAccessAttempt" --> LAW[(Log Analytics<br/>law-nsp-lab)]
+  JUMP["Jump VM (UAMI)"] -->|"inside subscription: allowed by default profile"| PERIMETER
+  NET(("Public internet")) -.->|"Learning: allowed + logged / Enforced: 403 + logged"| PERIMETER
+  PERIMETER -->|"NetworkSecurityPerimeterAccessRule + PublicAccessAttempt"| LAW[("Log Analytics law-nsp-lab")]
 ```
 
 ## What this proves
@@ -22,6 +22,7 @@ flowchart LR
 1. **Demo 1 — SQL writes through the perimeter.** Jump-VM uses its UAMI (Entra-only auth) to write rows to Azure SQL; KQL shows the access. From the public internet, same call is logged in Learning mode and **blocked** in Enforced mode.
 2. **Demo 2 — A Foundry "knowledge" agent.** Upload a synthetic Q3 report → create an AI Foundry agent with `file_search` → ask "what was Q3 revenue?". Behind the scenes AOAI ↔ AI Search ↔ Storage all transit the perimeter while still answering correctly.
 3. **Demo 3 — Public lockdown.** Flip to Enforced. From your laptop, `curl` against AOAI / Storage / Key Vault returns **403**. From the jump VM, the exact same calls still work. LAW shows the denies.
+4. **Demo 4 — NSP logs vs VNet flow logs.** Same workspace, two lenses: NSP shows the *resource access decision*, flow logs (with Traffic Analytics) show the *actual packets*. One KQL correlates both — see [`kql/vnet-flow-vs-nsp.kql`](kql/vnet-flow-vs-nsp.kql).
 
 ## Headline policy
 
@@ -54,7 +55,7 @@ git clone https://github.com/nthewara/nsp-lab && cd nsp-lab
 
 ## Cost
 
-≈ **$11 / day** at idle (S0 SQL ≈ $0.50, AI Search Basic ≈ $2.50, Jump VM B2s ≈ $1.20, AOAI gpt-4o-mini pay-as-you-go, Cosmos serverless near-zero, KV/Storage cents). NSP itself is **free**.
+≈ **$12–$14 / day** at idle: S0 SQL ≈ $0.50, AI Search Basic ≈ $2.50, Jump VM B2s ≈ $1.20, AOAI gpt-4o-mini pay-as-you-go, Cosmos serverless near-zero, KV/Storage cents, **VNet flow logs + Traffic Analytics ≈ $1–$2/day** (mostly LAW ingest at low traffic + 10 days of flow storage). NSP itself is **free**.
 
 ## Cleanup
 
@@ -67,14 +68,15 @@ Then run the same `labs.py` `update --status destroyed` line emitted by the tear
 ## Layout
 
 ```
-infra/terraform/00-foundation   # isolated tfstate storage (one-off)
+infra/terraform/00-foundation   # isolated tfstate storage (one-off bash script)
 infra/terraform/10-perimeter    # RG + LAW + UAMI + NSP + default profile + jump VM + VNet
 infra/terraform/20-resources    # KV / Storage / SQL / AI Services / AI Search / Cosmos
 infra/terraform/30-foundry      # AI Foundry project + connections + file upload + gpt-4o-mini
 infra/terraform/40-associations # Bind all six resources to the perimeter
-infra/terraform/50-diagnostics  # Diagnostic settings → LAW (NSP + resource categories)
-demos/                          # The three demos
-kql/                            # Reusable LAW queries + a workbook
+infra/terraform/50-diagnostics  # Diagnostic settings -> LAW (NSP + resource categories)
+infra/terraform/55-flow-logs    # VNet flow logs + Traffic Analytics -> same LAW
+demos/                          # The four demos
+kql/                            # Reusable LAW queries + a workbook + flow-vs-nsp join
 docs/                           # Concepts, gotchas, demo script, screenshots
 scripts/                        # Deploy / toggle / status / teardown helpers
 ```

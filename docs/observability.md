@@ -89,3 +89,78 @@ Anything in that table needs a new access rule before you flip the association t
 | Cosmos DB | `DataPlaneRequests` |
 
 These coexist with the NSP categories and let you cross-reference a denial with what the resource itself *would have* logged.
+
+---
+
+## VNet Flow Logs vs NSP Logs — two lenses, one LAW
+
+The lab also enables **VNet flow logs** with **Traffic Analytics** on `vnet-nsp-lab`, pointing at the **same** `law-nsp-lab` workspace as the NSP diagnostics. This is intentional: a single pane of glass for two very different views of the same traffic.
+
+```mermaid
+flowchart LR
+  subgraph TRAFFIC["One request from the jump VM to Azure SQL"]
+    REQ["TCP 1433 + TDS handshake"]
+  end
+  REQ --> NSPVIEW["NSP view (control plane) Did this Azure resource access get allowed/denied?"]
+  REQ --> FLOWVIEW["Flow log view (data plane) Which 5-tuple, how many bytes, which direction?"]
+  NSPVIEW --> LAW[("Log Analytics law-nsp-lab")]
+  FLOWVIEW --> LAW
+```
+
+### What each gives you
+
+| Aspect | NSP diagnostic logs | VNet flow logs (+ Traffic Analytics) |
+|---|---|---|
+| **Layer** | Azure control/identity-plane | Network data-plane (L3/L4) |
+| **Records** | Per resource-access attempt | Per 5-tuple flow (bidirectional, aggregated) |
+| **Key columns** | `accessMode_s`, `result_s`, `matchedRule_s`, `direction_s`, `operationName_s`, `sourceIPAddress_s` | `SrcIP_s`, `DestIP_s`, `DestPort_d`, `L4Protocol_s`, `FlowDirection_s`, `AllowedInFlows_d`, `DeniedInFlows_d`, `InboundBytes_d`, `OutboundBytes_d`, `FlowType_s` |
+| **Answers** | *Why* did this request get allowed or denied at the Azure resource boundary? | *What* network packets did the VNet observe, and did NSG / Azure VirtualNetwork rules allow them? |
+| **Granularity** | One row per access attempt | Aggregated into 1-min/10-min intervals |
+| **Cost** | Free + LAW ingest only | Storage retention (10 days) + Traffic Analytics surcharge + LAW ingest |
+| **Best for** | Compliance reporting, *which workloads need rules before going Enforced* | Capacity planning, top talkers, weird east-west traffic, threat hunting |
+
+### The 2026 table situation
+
+Traffic Analytics is in the middle of a schema migration:
+
+- **Legacy:** `AzureNetworkAnalytics_CL` — `SubType_s == "FlowLog"` selects the row type, fields are `_s` / `_d` suffixed.
+- **New:** `NTANetAnalytics` — typed columns, no suffixes. Microsoft is gradually moving customers; new workspaces in 2025+ often emit both. <https://learn.microsoft.com/azure/network-watcher/traffic-analytics-schema>
+
+Queries in this lab use **`AzureNetworkAnalytics_CL`** because it works in every region today; we provide `NTANetAnalytics` equivalents in comments.
+
+### Common-time correlation pattern
+
+The trick is binning both tables on `TimeGenerated` and joining on a coarse identifier (resource name, source IP, or just a 1-min bucket):
+
+```kusto
+let window = ago(1h);
+let nsp =
+    AzureDiagnostics
+    | where TimeGenerated > window
+    | where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+    | extend resource = tostring(split(ResourceId, "/")[-1])
+    | project nspTime = TimeGenerated, nspResult = result_s, nspMode = accessMode_s,
+              nspRule = matchedRule_s, nspSrcIP = sourceIPAddress_s, resource;
+let flow =
+    AzureNetworkAnalytics_CL
+    | where TimeGenerated > window
+    | where SubType_s == "FlowLog"
+    | project flowTime = TimeGenerated, SrcIP_s, DestIP_s, DestPort_d,
+              L4Protocol_s, AllowedInFlows_d, DeniedInFlows_d,
+              InboundBytes_d, OutboundBytes_d;
+flow
+| join kind=fullouter (nsp) on $left.SrcIP_s == $right.nspSrcIP
+| project flowTime, nspTime, SrcIP_s, DestIP_s, DestPort_d, L4Protocol_s,
+          nspResult, nspMode, nspRule, resource,
+          AllowedInFlows_d, DeniedInFlows_d, InboundBytes_d
+| order by coalesce(nspTime, flowTime) desc
+```
+
+See [`kql/vnet-flow-vs-nsp.kql`](../kql/vnet-flow-vs-nsp.kql) for the canonical version.
+
+### Mental model
+
+> *"NSP tells me **who tried to talk to my Azure resource and whether the perimeter let them**. Flow logs tell me **what packets actually moved on the wire**. Together they confirm both planes agree."*
+
+In Demo 4 we run the exact same SQL insert from the jump VM and the laptop, then pull both lenses side-by-side.
+

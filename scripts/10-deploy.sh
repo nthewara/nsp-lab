@@ -11,7 +11,7 @@ AUTO="${1:-}"
 [[ ! -f "$TFVARS"  ]] && { echo "missing $TFVARS"; exit 1; }
 [[ ! -f "$BACKEND" ]] && { echo "missing $BACKEND — run 00-bootstrap-state.sh first"; exit 1; }
 
-STAGES=( 10-perimeter 20-resources 30-foundry 40-associations 50-diagnostics )
+STAGES=( 10-perimeter 20-resources 30-foundry 40-associations 50-diagnostics 55-flow-logs )
 
 for s in "${STAGES[@]}"; do
   echo
