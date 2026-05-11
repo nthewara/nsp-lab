@@ -1,0 +1,39 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# NSP Lab — Workbook\nVisual snapshots over the last 24h. Adjust the time range with the picker above."
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureDiagnostics\n| where TimeGenerated > ago(24h)\n| where Category in ('NetworkSecurityPerimeterAccessRule','NetworkSecurityPerimeterPublicAccessAttempt')\n| extend resource = tostring(split(ResourceId, '/')[-1])\n| summarize events = count() by resource, accessMode_s\n| order by events desc",
+        "size": 1,
+        "title": "Events per resource",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureDiagnostics\n| where TimeGenerated > ago(24h)\n| where Category == 'NetworkSecurityPerimeterPublicAccessAttempt'\n| where result_s == 'Denied'\n| extend resource = tostring(split(ResourceId, '/')[-1])\n| project TimeGenerated, resource, accessMode_s, sourceIPAddress_s, operationName_s, matchedRule_s\n| order by TimeGenerated desc",
+        "title": "Denied public access attempts",
+        "size": 2
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureDiagnostics\n| where TimeGenerated > ago(24h)\n| where Category == 'NetworkSecurityPerimeterPublicAccessAttempt'\n| where accessMode_s == 'Learning' and matchedRule_s == '_NoRuleMatched' and result_s == 'Allowed'\n| extend resource = tostring(split(ResourceId, '/')[-1])\n| summarize attempts = count(), sources = make_set(sourceIPAddress_s, 10) by resource, direction_s\n| order by attempts desc",
+        "title": "Would deny if Enforced (plan view)",
+        "size": 2
+      }
+    }
+  ]
+}

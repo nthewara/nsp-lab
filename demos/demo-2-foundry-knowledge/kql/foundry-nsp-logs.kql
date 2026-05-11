@@ -1,0 +1,7 @@
+// NSP rule evaluations and public-access attempts touching AOAI, AI Search, or Storage in the last hour.
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category in ("NetworkSecurityPerimeterAccessRule", "NetworkSecurityPerimeterPublicAccessAttempt")
+| where ResourceId has_any ("Microsoft.CognitiveServices", "Microsoft.Search", "Microsoft.Storage")
+| project TimeGenerated, Category, accessMode_s, direction_s, matchedRule_s, action = coalesce(result_s, action_s), sourceIPAddress_s, ResourceId
+| order by TimeGenerated desc

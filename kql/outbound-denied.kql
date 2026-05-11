@@ -1,0 +1,9 @@
+// Outbound calls that were denied (or *would* be denied if Enforced).
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+| where direction_s == "Outbound"
+| where result_s == "Denied" or (accessMode_s == "Learning" and matchedRule_s == "_NoRuleMatched")
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| project TimeGenerated, resource, accessMode_s, result_s, operationName_s
+| order by TimeGenerated desc

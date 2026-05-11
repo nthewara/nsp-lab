@@ -1,0 +1,9 @@
+// Inbound public access that was denied (or *would* have been denied in Learning).
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+| where direction_s == "Inbound"
+| where result_s == "Denied" or (accessMode_s == "Learning" and matchedRule_s == "_NoRuleMatched")
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| project TimeGenerated, resource, accessMode_s, result_s, sourceIPAddress_s, operationName_s
+| order by TimeGenerated desc

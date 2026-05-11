@@ -1,0 +1,14 @@
+// Flip readiness: what would Enforced mode deny right now?
+// Anything in this table needs an explicit access rule before you switch.
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+| where accessMode_s == "Learning"
+| where result_s == "Allowed"
+| where matchedRule_s == "_NoRuleMatched"
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| summarize attempts  = count(),
+            sources   = make_set(sourceIPAddress_s, 10),
+            ops       = make_set(operationName_s, 5)
+  by resource, direction_s
+| order by attempts desc

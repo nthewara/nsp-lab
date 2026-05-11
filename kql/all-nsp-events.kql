@@ -1,0 +1,8 @@
+// All NSP events across the entire perimeter, last hour.
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category in ("NetworkSecurityPerimeterAccessRule", "NetworkSecurityPerimeterPublicAccessAttempt")
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| project TimeGenerated, Category, resource, direction_s, accessMode_s, matchedRule_s,
+          action = coalesce(result_s, action_s), sourceIPAddress_s, operationName_s
+| order by TimeGenerated desc

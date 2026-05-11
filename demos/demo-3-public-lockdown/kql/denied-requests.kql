@@ -1,0 +1,8 @@
+// Public access attempts that were DENIED by NSP in the last hour.
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category == "NetworkSecurityPerimeterPublicAccessAttempt"
+| where result_s == "Denied"
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| project TimeGenerated, resource, sourceIPAddress_s, accessMode_s, matchedRule_s, operationName_s, profileName_s
+| order by TimeGenerated desc

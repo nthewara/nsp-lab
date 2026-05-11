@@ -1,0 +1,7 @@
+// Top matched rules, grouped by resource — quick "what's hitting what" overview.
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "NetworkSecurityPerimeterAccessRule"
+| extend resource = tostring(split(ResourceId, "/")[-1])
+| summarize hits = count() by resource, direction_s, matchedRule_s, accessMode_s
+| order by hits desc

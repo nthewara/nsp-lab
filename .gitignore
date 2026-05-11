@@ -1,0 +1,28 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Secrets & local config
+terraform.tfvars
+*.auto.tfvars
+backend.hcl
+.env
+.env.*
+secrets/
+
+# Python / Foundry helpers
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Misc
+.DS_Store
+*.swp
+*.tmp
+out/
+*.log

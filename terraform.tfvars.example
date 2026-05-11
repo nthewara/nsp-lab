@@ -1,0 +1,14 @@
+# Copy this to ~/workspace/tfvars/nsp-lab.tfvars (NOT committed). Real values live there.
+
+subscription_id   = "00000000-0000-0000-0000-000000000000"
+tenant_id         = "00000000-0000-0000-0000-000000000000"
+location          = "australiaeast"
+name_prefix       = "nsp-lab"
+allowed_ssh_cidr  = "0.0.0.0/0"   # tighten to your IP/32 in real use
+vm_admin_user     = "labadmin"
+vm_ssh_public_key = "ssh-ed25519 AAAA... your-key"
+
+# Bootstrap output (`scripts/00-bootstrap-state.sh`)
+tfstate_rg        = "tfstate-nsp-lab"
+tfstate_account   = "tfstatensplabXXXXXX"
+tfstate_container = "tfstate"

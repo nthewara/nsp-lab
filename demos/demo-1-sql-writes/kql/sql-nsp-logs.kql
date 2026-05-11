@@ -1,0 +1,8 @@
+// NSP events touching the SQL database, last 1h.
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider == "MICROSOFT.SQL"
+   or Category in ("NetworkSecurityPerimeterAccessRule", "NetworkSecurityPerimeterPublicAccessAttempt")
+| where ResourceId has "sql-nsp-lab"
+| project TimeGenerated, Category, direction_s, accessMode_s, matchedRule_s, sourceIPAddress_s, result_s = coalesce(result_s, action_s), ResourceId
+| order by TimeGenerated desc
