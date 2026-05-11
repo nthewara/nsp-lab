@@ -163,6 +163,19 @@ resource "azurerm_cognitive_account" "aoai" {
   local_auth_enabled            = false
   identity { type = "SystemAssigned" }
   tags = local.tags
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
+# Enable Foundry-project management on the AI Services account (not exposed by azurerm yet).
+resource "azapi_update_resource" "aoai_allow_projects" {
+  type        = "Microsoft.CognitiveServices/accounts@2024-10-01"
+  resource_id = azurerm_cognitive_account.aoai.id
+  body = {
+    properties = {
+      allowProjectManagement = true
+    }
+  }
 }
 resource "azurerm_cognitive_deployment" "gpt4o_mini" {
   name                 = "gpt-4o-mini"
