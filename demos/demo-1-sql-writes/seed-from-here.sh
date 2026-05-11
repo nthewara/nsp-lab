@@ -26,6 +26,6 @@ sed "s/__UAMI_NAME__/$UAMI/g" "$SEED" > "$TMP"
 command -v sqlcmd >/dev/null || { echo "install sqlcmd: brew tap microsoft/mssql-release && brew install mssql-tools18"; exit 1; }
 
 echo "→ seeding…"
-sqlcmd -S "$SQL_FQDN" -d "$DB" -G --authentication-method=ActiveDirectoryAzCli -i "$TMP" -b
+sqlcmd -S "$SQL_FQDN" -d "$DB" --authentication-method=ActiveDirectoryAzCli -i "$TMP" -b
 rm -f "$TMP"
 echo "✔ seed complete"

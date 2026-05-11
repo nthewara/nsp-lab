@@ -61,9 +61,14 @@ locals {
     "NspPublicInboundPerimeterRulesDenied",
     "NspPublicOutboundPerimeterRulesAllowed",
     "NspPublicOutboundPerimeterRulesDenied",
+    "NspPublicInboundResourceRulesAllowed",
+    "NspPublicInboundResourceRulesDenied",
+    "NspPublicOutboundResourceRulesAllowed",
+    "NspPublicOutboundResourceRulesDenied",
     "NspCrossPerimeterInboundAllowed",
     "NspCrossPerimeterOutboundAllowed",
     "NspPrivateInboundAllowed",
+    "NspIntraPerimeterInboundAllowed",
     "NspOutboundAttempt",
   ]
 }

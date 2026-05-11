@@ -53,19 +53,31 @@ data "azurerm_virtual_network" "vnet" {
 }
 
 # Storage for RAW flow logs (separate account so it doesn't log itself).
-# Allow shared-key + public access here on purpose — Network Watcher writes via Storage SDK
-# and this account is NOT in the NSP, so it isn't part of the lockdown.
-resource "azurerm_storage_account" "flow" {
-  name                          = substr("stflow${replace(local.name_prefix, "-", "")}${local.suffix}", 0, 24)
-  resource_group_name           = local.rg
-  location                      = local.location
-  account_tier                  = "Standard"
-  account_replication_type      = "LRS"
-  account_kind                  = "StorageV2"
-  shared_access_key_enabled     = true # required for Network Watcher writer
-  public_network_access_enabled = true
-  min_tls_version               = "TLS1_2"
-  tags                          = local.tags
+# Use azapi so we skip the azurerm post-create data-plane probe, which fails when
+# tenant defaults auto-disable shared-key access. Network Watcher writes via ARM.
+resource "azapi_resource" "flow_sa" {
+  type      = "Microsoft.Storage/storageAccounts@2023-05-01"
+  name      = substr("stflow${replace(local.name_prefix, "-", "")}${local.suffix}", 0, 24)
+  parent_id = "/subscriptions/${local.sub}/resourceGroups/${local.rg}"
+  location  = local.location
+  tags      = local.tags
+  body = {
+    sku  = { name = "Standard_LRS" }
+    kind = "StorageV2"
+    properties = {
+      minimumTlsVersion        = "TLS1_2"
+      publicNetworkAccess      = "Enabled"
+      allowBlobPublicAccess    = false
+      allowSharedKeyAccess     = false
+      supportsHttpsTrafficOnly = true
+    }
+  }
+  response_export_values    = ["id"]
+  schema_validation_enabled = false
+}
+
+locals {
+  flow_sa_id = azapi_resource.flow_sa.id
 }
 
 # Network Watcher is auto-created per-region by Azure as 'NetworkWatcherRG/NetworkWatcher_<region>'.
@@ -81,7 +93,7 @@ resource "azurerm_network_watcher_flow_log" "vnet" {
   name                 = "fl-${local.name_prefix}-vnet"
   network_watcher_name = "NetworkWatcher_${local.location}"
   resource_group_name  = "NetworkWatcherRG"
-  storage_account_id   = azurerm_storage_account.flow.id
+  storage_account_id   = local.flow_sa_id
   enabled              = true
   version              = 2
 
@@ -103,5 +115,5 @@ resource "azurerm_network_watcher_flow_log" "vnet" {
   tags = local.tags
 }
 
-output "flow_storage_id" { value = azurerm_storage_account.flow.id }
+output "flow_storage_id" { value = local.flow_sa_id }
 output "flow_log_id" { value = azurerm_network_watcher_flow_log.vnet.id }

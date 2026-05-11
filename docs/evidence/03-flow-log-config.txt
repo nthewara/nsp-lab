@@ -1,0 +1,9 @@
+enabled: true
+name: fl-nsp-lab-vnet
+ta:
+  enabled: true
+  trafficAnalyticsInterval: 10
+  workspaceId: 7a1a2b86-594d-4e1b-ba8f-a131a03bf8af
+  workspaceRegion: australiaeast
+  workspaceResourceId: /subscriptions/b9d87a00-a4d8-47d9-84a2-cfd7a9d745d2/resourceGroups/rg-nsp-lab-uyhb/providers/Microsoft.OperationalInsights/workspaces/law-nsp-lab
+target: /subscriptions/b9d87a00-a4d8-47d9-84a2-cfd7a9d745d2/resourceGroups/rg-nsp-lab-uyhb/providers/Microsoft.Network/virtualNetworks/vnet-nsp-lab

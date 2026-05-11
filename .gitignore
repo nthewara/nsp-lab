@@ -26,3 +26,6 @@ venv/
 *.tmp
 out/
 *.log
+infra/terraform/**/tfplan
+.terraform/
+.terraform.lock.hcl

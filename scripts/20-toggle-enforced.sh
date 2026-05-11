@@ -11,7 +11,9 @@ NSP="$(az network perimeter list -g "$RG" --query '[0].name' -o tsv --subscripti
 [[ -z "$NSP" ]] && { echo "no NSP found in $RG"; exit 1; }
 echo "→ flipping all associations in $NSP (RG=$RG) to $TARGET_MODE"
 
-mapfile -t ASSOCS < <(az network perimeter association list --perimeter-name "$NSP" -g "$RG" --subscription "$SUB" --query '[].name' -o tsv)
+ASSOCS_RAW=$(az network perimeter association list --perimeter-name "$NSP" -g "$RG" --subscription "$SUB" --query '[].name' -o tsv)
+ASSOCS=()
+while IFS= read -r line; do [[ -n "$line" ]] && ASSOCS+=("$line"); done <<< "$ASSOCS_RAW"
 echo "found ${#ASSOCS[@]} associations: ${ASSOCS[*]}"
 
 API="2024-07-01"

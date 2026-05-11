@@ -14,7 +14,7 @@ DB=$(terraform output -raw sql_db_name)
 MSG="hello from internet $(hostname) at $(date -u +%FT%TZ)"
 echo "→ inserting via $SQL_FQDN ($DB) from $(curl -s ifconfig.me 2>/dev/null || echo '<local>')"
 set +e
-sqlcmd -S "$SQL_FQDN" -d "$DB" -G --authentication-method=ActiveDirectoryAzCli \
+sqlcmd -S "$SQL_FQDN" -d "$DB" --authentication-method=ActiveDirectoryAzCli \
   -Q "INSERT INTO dbo.events (source, message) VALUES (N'laptop', N'$MSG'); SELECT TOP 3 id, source, message FROM dbo.events ORDER BY id DESC;" -b
 RC=$?
 set -e
