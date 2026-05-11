@@ -124,8 +124,9 @@ resource "azurerm_role_assignment" "st_blob_contrib_agent" {
 }
 
 # ─── Azure SQL (Entra-only) ────────────────────────────────────────────
-data "azuread_service_principal" "agent" {
-  client_id = data.azurerm_client_config.current.client_id
+data "azuread_client_config" "client" {}
+data "azuread_user" "agent" {
+  object_id = data.azurerm_client_config.current.object_id
 }
 resource "azurerm_mssql_server" "sql" {
   name                          = "sql-${local.name_prefix}-${local.suffix}"
@@ -136,8 +137,8 @@ resource "azurerm_mssql_server" "sql" {
   public_network_access_enabled = true
   azuread_administrator {
     azuread_authentication_only = true
-    login_username              = data.azuread_service_principal.agent.display_name
-    object_id                   = data.azuread_service_principal.agent.object_id
+    login_username              = data.azuread_user.agent.user_principal_name
+    object_id                   = data.azuread_user.agent.object_id
     tenant_id                   = var.tenant_id
   }
   tags = local.tags
@@ -199,7 +200,6 @@ resource "azurerm_search_service" "srch" {
   location                      = local.location
   sku                           = "basic"
   local_authentication_enabled  = false
-  authentication_failure_mode   = "http403"
   public_network_access_enabled = true
   identity { type = "SystemAssigned" }
   tags = local.tags
@@ -263,7 +263,7 @@ output "sql_id" { value = azurerm_mssql_server.sql.id }
 output "sql_server_fqdn" { value = azurerm_mssql_server.sql.fully_qualified_domain_name }
 output "sql_db_id" { value = azurerm_mssql_database.db.id }
 output "sql_db_name" { value = azurerm_mssql_database.db.name }
-output "sql_admin_login" { value = data.azuread_service_principal.agent.display_name }
+output "sql_admin_login" { value = data.azuread_user.agent.user_principal_name }
 output "aoai_id" { value = azurerm_cognitive_account.aoai.id }
 output "aoai_name" { value = azurerm_cognitive_account.aoai.name }
 output "aoai_endpoint" { value = azurerm_cognitive_account.aoai.endpoint }
